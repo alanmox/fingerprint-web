@@ -134,6 +134,31 @@ schema.sql
 - Login on `/login` with the same username
 - Confirm redirect to `/dashboard`
 
+## Render Deployment
+
+This repo now includes [render.yaml](/home/allanmox/ALLANMOX/PROJECT/fingerprint-web/render.yaml) so you can deploy with a Render Blueprint.
+
+Render setup:
+
+- Push this repository to GitHub, GitLab, or Bitbucket.
+- In Render, create a new Blueprint and select the repository.
+- Render will create:
+  - a Node web service named `fingerprint-web`
+  - a Postgres database named `fingerprint-web-db`
+
+Important environment variables on Render:
+
+- `DATABASE_URL` is wired automatically from the Render Postgres instance.
+- `SESSION_SECRET` is generated automatically.
+- Set `ORIGIN` to your Render app URL, for example `https://fingerprint-web.onrender.com`
+- Set `NEXT_PUBLIC_RP_ID` to your Render hostname if you still use the WebAuthn endpoints.
+
+Render commands configured in the Blueprint:
+
+- Build: `npm install && npm run build`
+- Pre-deploy: `npm run prisma:deploy`
+- Start: `npm start`
+
 ## Production Notes
 
 - Use HTTPS outside localhost.

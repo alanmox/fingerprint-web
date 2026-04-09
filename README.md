@@ -155,7 +155,7 @@ Important environment variables on Render:
 
 Render commands configured in the Blueprint:
 
-- Build: `npm install && npm run prisma:deploy && npm run build`
+- Build: `npm install && npm run prisma:push && npm run build`
 - Start: `npm start`
 
 ## Production Notes

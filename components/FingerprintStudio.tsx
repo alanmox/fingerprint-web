@@ -72,6 +72,12 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
+  const [originDetails, setOriginDetails] = useState<{
+    origin: string;
+    isSecure: boolean;
+    hostname: string;
+  } | null>(null);
+  const [permissionState, setPermissionState] = useState<string>("unknown");
 
   useEffect(() => {
     try {
@@ -95,6 +101,49 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    setOriginDetails({
+      origin: window.location.origin,
+      isSecure: window.isSecureContext,
+      hostname: window.location.hostname,
+    });
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadPermissionState() {
+      if (typeof navigator === "undefined" || !("permissions" in navigator)) {
+        return;
+      }
+
+      try {
+        const result = await navigator.permissions.query({
+          name: "camera" as PermissionName,
+        });
+
+        if (ignore) {
+          return;
+        }
+
+        setPermissionState(result.state);
+        result.onchange = () => setPermissionState(result.state);
+      } catch {
+        setPermissionState("unknown");
+      }
+    }
+
+    void loadPermissionState();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (mode !== "capture") {
       return;
     }
@@ -110,6 +159,40 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
     setCameraReady(false);
   }
 
+  function getCameraErrorMessage(caughtError: unknown) {
+    if (typeof window !== "undefined" && !window.isSecureContext) {
+      return `Camera access is blocked because this page is running on an insecure origin (${window.location.origin}). Open the app on HTTPS or use localhost.`;
+    }
+
+    if (!(caughtError instanceof DOMException)) {
+      return caughtError instanceof Error
+        ? caughtError.message
+        : "Unable to access the phone camera.";
+    }
+
+    if (caughtError.name === "NotAllowedError") {
+      return "Camera permission was denied. Allow camera access in your browser settings and reload the page.";
+    }
+
+    if (caughtError.name === "NotFoundError") {
+      return "No camera was found on this device.";
+    }
+
+    if (caughtError.name === "NotReadableError") {
+      return "The camera is already in use by another app. Close other camera apps and try again.";
+    }
+
+    if (caughtError.name === "OverconstrainedError") {
+      return "The preferred back camera is unavailable on this device. Try again and the app will fall back to any available camera.";
+    }
+
+    if (caughtError.name === "SecurityError") {
+      return "Browser security blocked camera access. Use HTTPS or localhost and try again.";
+    }
+
+    return caughtError.message;
+  }
+
   async function startCamera() {
     setBusy(true);
     setError("");
@@ -118,14 +201,40 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
     try {
       stopCamera();
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-        },
-        audio: false,
-      });
+      if (typeof window !== "undefined" && !window.isSecureContext) {
+        throw new DOMException("Camera requires a secure context.", "SecurityError");
+      }
+
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error(
+          "This browser does not expose camera APIs here. Use a modern mobile browser over HTTPS.",
+        );
+      }
+
+      let stream: MediaStream;
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          },
+          audio: false,
+        });
+      } catch (primaryError) {
+        if (
+          primaryError instanceof DOMException &&
+          ["OverconstrainedError", "NotFoundError"].includes(primaryError.name)
+        ) {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false,
+          });
+        } else {
+          throw primaryError;
+        }
+      }
 
       streamRef.current = stream;
 
@@ -138,11 +247,7 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
       setCameraReady(true);
       setStatus("Camera is ready. Place the thumb inside the frame and capture.");
     } catch (caughtError) {
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Unable to access the phone camera.",
-      );
+      setError(getCameraErrorMessage(caughtError));
       setStatus("");
     } finally {
       setBusy(false);
@@ -388,6 +493,23 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
           Open this page on a phone, allow camera access, place the thumb close to the
           lens, and capture a print-ready fingerprint letter inside the same project.
         </p>
+        <div className="security-note">
+          <strong>Camera origin:</strong>{" "}
+          {originDetails ? originDetails.origin : "Detecting..."}
+          <br />
+          <strong>Secure context:</strong>{" "}
+          {originDetails ? (originDetails.isSecure ? "Yes" : "No") : "Detecting..."}
+          <br />
+          <strong>Permission state:</strong> {permissionState}
+          {!originDetails?.isSecure ? (
+            <>
+              <br />
+              <strong>Fix:</strong> open this app through HTTPS. A phone visiting a LAN IP on
+              plain <code>http://</code> will usually be blocked from camera access by the
+              browser.
+            </>
+          ) : null}
+        </div>
         <div className="hero__actions">
           <Button busy={busy} onClick={startCamera} type="button">
             Allow Camera
@@ -482,6 +604,20 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
           <p className={`status ${error ? "status--error" : "status--success"}`}>
             {error || status}
           </p>
+          {!originDetails?.isSecure ? (
+            <div className="help-card">
+              <p>
+                Use <code>npm run dev:https</code>, then open the phone on the HTTPS
+                address for this computer. If the browser shows a certificate warning,
+                trust the local development certificate first.
+              </p>
+              <p>
+                If you must stay on a network IP, HTTPS is the workable path.{" "}
+                <code>localhost</code> is treated specially by browsers, but{" "}
+                <code>http://192.168.x.x</code> is not.
+              </p>
+            </div>
+          ) : null}
         </div>
       </section>
 

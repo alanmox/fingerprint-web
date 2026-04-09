@@ -1,6 +1,6 @@
-import { RegisterClient } from "./RegisterClient";
+import { FingerprintStudio } from "@/components/FingerprintStudio";
 
 export default function RegisterPage() {
-  return <RegisterClient />;
+  return <FingerprintStudio mode="capture" />;
 }
 

@@ -9,7 +9,7 @@ export function Form({ title, description, children }: FormProps) {
   return (
     <section className="card">
       <div className="card__header">
-        <p className="eyebrow">Passwordless Access</p>
+        <p className="eyebrow">ALLANTECH Workflow</p>
         <h1>{title}</h1>
         <p>{description}</p>
       </div>
@@ -17,4 +17,3 @@ export function Form({ title, description, children }: FormProps) {
     </section>
   );
 }
-

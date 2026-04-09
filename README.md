@@ -1,36 +1,84 @@
-# ALLANMOX WebAuthn Starter
+# ALLANTECH Thumb Intake Desk
 
-This project is a minimal full-stack authentication app built with Next.js App Router, TypeScript, PostgreSQL, Prisma, and SimpleWebAuthn. It supports passkey registration and login, stores authenticators in PostgreSQL, validates WebAuthn challenges securely, and protects a dashboard with a signed session cookie.
+ALLANTECH Thumb Intake Desk is a Next.js application for capturing a thumb image from a phone camera, transforming it into a blue-ink administrative impression, and placing the result into a printable ALLANTECH letter.
 
-## Stack
+This project is designed for practical intake work rather than flashy demo behavior. A phone operator can:
 
-- Next.js App Router
+- allow camera access
+- frame and capture a thumb image
+- review the raw crop and processed scan
+- generate a blue-ink impression for printing
+- issue a printable confirmation letter from the same workflow
+
+## What The App Does
+
+The current workflow is centered around two main routes:
+
+- `/register`
+  Camera intake desk for permission, capture, import, and review
+- `/dashboard`
+  Printable ALLANTECH letter using the captured thumb impression
+
+The app stores the current capture session in browser local storage so the operator can move from capture to print without losing the record.
+
+## Core Features
+
+- Next.js App Router with TypeScript
+- Mobile-friendly camera capture flow
+- Secure-context detection for browser camera access
+- Camera permission status messaging
+- Fallback camera request path when the preferred back camera is unavailable
+- In-browser image processing for:
+  - raw crop
+  - reference scan
+  - blue-ink thumb impression
+- Printable ALLANTECH confirmation letter
+- Render deployment via Blueprint
+
+## Tech Stack
+
+- Next.js
+- React
 - TypeScript
+- Prisma
 - PostgreSQL
-- Prisma ORM
-- `@simplewebauthn/server`
-- `@simplewebauthn/browser`
 
-## Environment
+## Important Reality Check
 
-Create or review `.env`:
+This project is a camera-assisted thumb capture workflow.
 
-```env
-NEXT_PUBLIC_RP_NAME=ALLANMOX
-NEXT_PUBLIC_RP_ID=localhost
-ORIGIN=http://localhost:3000
-DATABASE_URL=postgresql://postgres:M%40j%40liw%40s%40id2024%28pgadmin%29@localhost:5432/fingerprint_web?schema=public
-SESSION_SECRET=change-this-before-production
+It is not a forensic fingerprint scanner and it is not a certified biometric matching system. The image processing improves presentation and document usability, but it does not replace dedicated hardware fingerprint devices for legal or forensic-grade enrollment.
+
+## Project Structure
+
+```text
+app/
+  dashboard/page.tsx
+  login/page.tsx
+  page.tsx
+  register/page.tsx
+  globals.css
+  layout.tsx
+components/
+  Button.tsx
+  FingerprintStudio.tsx
+  Form.tsx
+lib/
+  auth.ts
+  db.ts
+  webauthn.ts
+prisma/
+  schema.prisma
+render.yaml
+schema.sql
 ```
 
 Notes:
 
-- `NEXT_PUBLIC_RP_ID=localhost` is correct for local development.
-- `ORIGIN` must exactly match the browser origin used during WebAuthn.
-- Update `DATABASE_URL` if your PostgreSQL username, database, or host differs.
-- Replace `SESSION_SECRET` with a long random value before production use.
+- The active user-facing experience is the camera-based intake flow.
+- Some legacy auth-related files are still present in the repo, but the current product flow is the thumb capture and print workflow.
 
-## Setup
+## Local Setup
 
 1. Install dependencies:
 
@@ -38,129 +86,225 @@ Notes:
 npm install
 ```
 
-2. Create the database if it does not already exist:
-
-```sql
-CREATE DATABASE fingerprint_web;
-```
-
-3. Generate Prisma client:
+2. If you want Prisma client generated explicitly:
 
 ```bash
 npm run prisma:generate
 ```
 
-4. Run the initial migration:
-
-```bash
-npm run prisma:migrate -- --name init
-```
-
-5. Start the app:
+3. Start the app locally:
 
 ```bash
 npm run dev
 ```
 
-6. Open:
+4. Open:
 
 ```text
 http://localhost:3000
 ```
 
-## WebAuthn Flow
+## Local Camera Testing
 
-Registration:
+### Best option on the same computer
 
-- `POST /api/auth/register/options`
-- Browser calls `startRegistration()`
-- `POST /api/auth/register/verify`
+Use:
 
-Authentication:
+```text
+http://localhost:3000/register
+```
 
-- `POST /api/auth/login/options`
-- Browser calls `startAuthentication()`
-- `POST /api/auth/login/verify`
+Browsers usually allow camera access on `localhost` because it is treated as a secure local origin.
 
-Security details:
+### Best option on a phone over the same network
 
-- Challenges are stored in short-lived HTTP-only cookies.
-- WebAuthn verification checks both `origin` and `rpID`.
-- Authenticator counters are updated after login to help prevent replay attacks.
-- Successful login creates a signed HTTP-only session cookie.
+Use HTTPS dev mode:
+
+```bash
+npm run dev:https
+```
+
+Then open on your phone:
+
+```text
+https://YOUR-PC-LAN-IP:3000/register
+```
+
+Example:
+
+```text
+https://192.168.1.10:3000/register
+```
+
+Important:
+
+- phone and computer must be on the same Wi-Fi or LAN
+- the browser may show a certificate warning for local HTTPS
+- you may need to trust the local development certificate before camera access works
+
+### Why plain LAN HTTP often fails
+
+This URL usually loads the page but still blocks the camera:
+
+```text
+http://192.168.x.x:3000
+```
+
+That happens because mobile browsers normally require a secure context for camera APIs. `localhost` is special, but a plain network IP over `http://` is not.
+
+## How To Use The App
+
+1. Open `/register`
+2. Fill in the intake record fields
+3. Tap `Allow Camera`
+4. Place the thumb inside the on-screen guide
+5. Tap `Record Thumb`
+6. Review:
+   - camera crop
+   - blue-ink print version
+   - reference scan
+7. Open `/dashboard`
+8. Print the ALLANTECH letter
+
+### Alternative capture path
+
+If direct camera access is unavailable, you can import an existing image file and the app will still generate:
+
+- an enhanced scan preview
+- a blue-ink thumb impression
+- a printable letter
+
+## Blue-Ink Print Logic
+
+The printed letter does not use the plain camera photo as the main thumb mark.
+
+Instead, the app creates a processed blue-ink version intended to look closer to an administrative thumb impression on paper. The letter keeps a separate reference scan for visual review.
+
+This means the print flow contains:
+
+- a blue-ink thumb impression for the main document presentation
+- a processed reference scan beside it
 
 ## Scripts
 
 - `npm run dev`
+  Start the local development server
+- `npm run dev:network`
+  Start the dev server on `0.0.0.0`
+- `npm run dev:https`
+  Start the dev server with HTTPS for better mobile camera testing
 - `npm run build`
+  Create a production build
 - `npm run start`
+  Start the production server
 - `npm run lint`
+  Run ESLint
 - `npm run format`
+  Format the codebase with Prettier
 - `npm run format:check`
+  Check formatting
 - `npm run prisma:generate`
+  Generate Prisma client
 - `npm run prisma:migrate`
+  Run Prisma dev migrations locally
+- `npm run prisma:push`
+  Push schema changes directly to the database
+- `npm run prisma:deploy`
+  Run deploy migrations if migrations exist
 - `npm run prisma:studio`
+  Open Prisma Studio
 
-## Project Structure
+## Environment Variables
 
-```text
-app/
-  api/auth/register/options/route.ts
-  api/auth/register/verify/route.ts
-  api/auth/login/options/route.ts
-  api/auth/login/verify/route.ts
-  api/auth/logout/route.ts
-  dashboard/page.tsx
-  login/page.tsx
-  register/page.tsx
-lib/
-  auth.ts
-  db.ts
-  webauthn.ts
-components/
-  Button.tsx
-  Form.tsx
-types/
-  auth.ts
-prisma/
-  schema.prisma
-schema.sql
+Local `.env` example:
+
+```env
+NEXT_PUBLIC_RP_NAME=ALLANMOX
+NEXT_PUBLIC_RP_ID=localhost
+ORIGIN=http://localhost:3000
+DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/fingerprint_web?schema=public
+SESSION_SECRET=replace-with-a-long-random-string
 ```
 
-## Local Testing
+Notes:
 
-- Register a new username on `/register`
-- Approve your device’s passkey prompt
-- Login on `/login` with the same username
-- Confirm redirect to `/dashboard`
+- `DATABASE_URL` is required if you use Prisma-backed features
+- `ORIGIN` should match the real app URL in each environment
+- some legacy env vars remain from the earlier auth foundation, but they do not drive the current camera workflow
 
 ## Render Deployment
 
-This repo now includes [render.yaml](/home/allanmox/ALLANMOX/PROJECT/fingerprint-web/render.yaml) so you can deploy with a Render Blueprint.
+This repo includes [render.yaml](/home/allanmox/ALLANMOX/PROJECT/fingerprint-web/render.yaml) for Render Blueprint deployment.
 
-Render setup:
+The Blueprint creates:
 
-- Push this repository to GitHub, GitLab, or Bitbucket.
-- In Render, create a new Blueprint and select the repository.
-- Render will create:
-  - a Node web service named `fingerprint-web`
-  - a Postgres database named `fingerprint-web-db`
+- a web service named `fingerprint-web`
+- a Postgres database named `fingerprint-web-db`
 
-Important environment variables on Render:
+### Render Build Flow
 
-- `DATABASE_URL` is wired automatically from the Render Postgres instance.
-- `SESSION_SECRET` is generated automatically.
-- Set `ORIGIN` to your Render app URL, for example `https://fingerprint-web.onrender.com`
-- Set `NEXT_PUBLIC_RP_ID` to your Render hostname if you still use the WebAuthn endpoints.
+The Render Blueprint currently uses:
 
-Render commands configured in the Blueprint:
+- build:
 
-- Build: `npm install && npm run prisma:push && npm run build`
-- Start: `npm start`
+```text
+npm install --include=dev && npm run prisma:push && npm run build
+```
 
-## Production Notes
+- start:
 
-- Use HTTPS outside localhost.
-- Replace the cookie-based challenge store with Redis or database-backed storage if you need multi-instance deployments.
-- Set a strong `SESSION_SECRET`.
-- Consider adding rate limiting, audit logging, and CSRF protections for higher-risk deployments.
+```text
+npm start
+```
+
+`npm run prisma:push` is used because the repository does not currently contain committed Prisma migration files.
+
+### Render Environment Values
+
+On Render, use:
+
+- `ORIGIN`
+  Example:
+
+```text
+https://fingerprint-web.onrender.com
+```
+
+- `NEXT_PUBLIC_RP_ID`
+  Hostname only:
+
+```text
+fingerprint-web.onrender.com
+```
+
+Important:
+
+- `ORIGIN` includes `https://`
+- `NEXT_PUBLIC_RP_ID` must be hostname only, without `https://`
+
+### Why Render Helps For Camera Access
+
+Render serves the app over HTTPS, which is exactly what mobile browsers want for camera permission. That makes it much easier to test the camera flow on a phone than a plain LAN `http://` address.
+
+## Verification
+
+The project has been checked with:
+
+```bash
+npm run lint
+npx tsc --noEmit
+npm run build
+```
+
+## Recommended Next Improvements
+
+- remove the remaining legacy auth routes if the project is now permanently camera-first
+- persist capture records in PostgreSQL instead of only browser local storage
+- add server-side document numbering
+- add operator accounts and intake history
+- generate downloadable PDF letters
+- add image quality scoring for poor lighting or blur
+
+## License / Internal Use
+
+If this project is for internal ALLANTECH operational use, add your organization’s preferred license or internal usage notice here.

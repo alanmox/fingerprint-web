@@ -16,6 +16,7 @@ type FingerprintRecord = {
   capturedAt: string;
   originalImage: string;
   enhancedImage: string;
+  inkImage: string;
 };
 
 type Props = {
@@ -56,6 +57,40 @@ function enhanceFingerprint(sourceCanvas: HTMLCanvasElement, targetCanvas: HTMLC
   targetContext.putImageData(source, 0, 0);
 }
 
+function createInkFingerprint(sourceCanvas: HTMLCanvasElement, targetCanvas: HTMLCanvasElement) {
+  const context = sourceCanvas.getContext("2d");
+  const targetContext = targetCanvas.getContext("2d");
+
+  if (!context || !targetContext) {
+    throw new Error("Canvas processing is unavailable on this device.");
+  }
+
+  const { width, height } = sourceCanvas;
+  const source = context.getImageData(0, 0, width, height);
+  const data = source.data;
+
+  for (let index = 0; index < data.length; index += 4) {
+    const red = data[index] ?? 0;
+    const green = data[index + 1] ?? 0;
+    const blue = data[index + 2] ?? 0;
+    const grayscale = 0.299 * red + 0.587 * green + 0.114 * blue;
+    const ridgeStrength = 1 - grayscale / 255;
+    const alpha = ridgeStrength > 0.28 ? Math.min(255, ridgeStrength * 320) : 0;
+
+    data[index] = 26;
+    data[index + 1] = 77;
+    data[index + 2] = 158;
+    data[index + 3] = alpha;
+  }
+
+  targetCanvas.width = width;
+  targetCanvas.height = height;
+  targetContext.clearRect(0, 0, width, height);
+  targetContext.fillStyle = "#ffffff";
+  targetContext.fillRect(0, 0, width, height);
+  targetContext.putImageData(source, 0, 0);
+}
+
 export function FingerprintStudio({ mode = "capture" }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const captureCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -68,6 +103,7 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
   const [capturedAt, setCapturedAt] = useState(getTodayValue());
   const [originalImage, setOriginalImage] = useState("");
   const [enhancedImage, setEnhancedImage] = useState("");
+  const [inkImage, setInkImage] = useState("");
   const [cameraReady, setCameraReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
@@ -95,6 +131,7 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
       setCapturedAt(parsed.capturedAt);
       setOriginalImage(parsed.originalImage);
       setEnhancedImage(parsed.enhancedImage);
+      setInkImage(parsed.inkImage ?? "");
     } catch {
       window.localStorage.removeItem(STORAGE_KEY);
     }
@@ -262,6 +299,7 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
     const video = videoRef.current;
     const captureCanvas = captureCanvasRef.current;
     const enhancedCanvas = enhancedCanvasRef.current;
+    const inkCanvas = document.createElement("canvas");
 
     if (!video || !captureCanvas || !enhancedCanvas) {
       setError("Camera canvas is not ready yet.");
@@ -303,9 +341,11 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
     );
 
     enhanceFingerprint(captureCanvas, enhancedCanvas);
+    createInkFingerprint(captureCanvas, inkCanvas);
 
     const original = captureCanvas.toDataURL("image/png");
     const enhanced = enhancedCanvas.toDataURL("image/png");
+    const ink = inkCanvas.toDataURL("image/png");
     const record = {
       applicantName,
       purpose,
@@ -314,12 +354,14 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
       capturedAt,
       originalImage: original,
       enhancedImage: enhanced,
+      inkImage: ink,
     };
 
     setOriginalImage(original);
     setEnhancedImage(enhanced);
+    setInkImage(ink);
     saveRecord(record);
-    setStatus("Thumb image captured and scan preview generated.");
+    setStatus("Thumb image captured. Blue-ink print version is ready for the letter.");
   }
 
   function handleFileImport(event: ChangeEvent<HTMLInputElement>) {
@@ -336,6 +378,7 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
       image.onload = () => {
         const captureCanvas = captureCanvasRef.current;
         const enhancedCanvas = enhancedCanvasRef.current;
+        const inkCanvas = document.createElement("canvas");
 
         if (!captureCanvas || !enhancedCanvas) {
           setError("Canvas is not available.");
@@ -354,9 +397,11 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
 
         context.drawImage(image, 0, 0);
         enhanceFingerprint(captureCanvas, enhancedCanvas);
+        createInkFingerprint(captureCanvas, inkCanvas);
 
         const original = captureCanvas.toDataURL("image/png");
         const enhanced = enhancedCanvas.toDataURL("image/png");
+        const ink = inkCanvas.toDataURL("image/png");
         const record = {
           applicantName,
           purpose,
@@ -365,12 +410,14 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
           capturedAt,
           originalImage: original,
           enhancedImage: enhanced,
+          inkImage: ink,
         };
 
         setOriginalImage(original);
         setEnhancedImage(enhanced);
+        setInkImage(ink);
         saveRecord(record);
-        setStatus("Image imported and enhanced for print preview.");
+        setStatus("Image imported and converted into a blue-ink print preview.");
         setError("");
       };
 
@@ -393,8 +440,9 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
       capturedAt,
       originalImage,
       enhancedImage,
+      inkImage,
     });
-  }, [applicantName, purpose, documentRef, issuedBy, capturedAt, originalImage, enhancedImage]);
+  }, [applicantName, purpose, documentRef, issuedBy, capturedAt, originalImage, enhancedImage, inkImage]);
 
   if (mode === "letter") {
     return (
@@ -404,8 +452,8 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
             <p className="eyebrow">ALLANTECH Organization</p>
             <h1>Fingerprint Confirmation Letter</h1>
             <p>
-              Print this letter after capturing the thumb image. The enhanced panel is
-              optimized for visual review, not forensic-grade biometric matching.
+              Print this letter after capturing the thumb image. The fingerprint is placed
+              on the document as a blue-ink administrative impression rather than a plain photo.
             </p>
           </div>
 
@@ -424,32 +472,33 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
             <div className="letter__body">
               <p>To whom it may concern,</p>
               <p>
-                This letter confirms that ALLANTECH has captured a thumb image for{" "}
+                This letter confirms that ALLANTECH has recorded a thumb impression for{" "}
                 <strong>{applicantName || "Unnamed applicant"}</strong> for the purpose
                 of <strong>{purpose || "fingerprint review"}</strong>.
               </p>
               <p>
-                The image below was collected through a camera-assisted workflow and
-                enhanced in-browser to improve ridge visibility for administrative review.
+                The impression below was prepared through the ALLANTECH mobile capture
+                workflow and converted into a blue administrative print for inclusion in
+                this record.
               </p>
 
               <div className="letter__images">
-                <figure className="letter__figure">
-                  <span>Original Capture</span>
-                  {originalImage ? (
+                <figure className="letter__figure letter__figure--ink">
+                  <span>Blue Ink Thumb Impression</span>
+                  {inkImage ? (
                     <NextImage
-                      alt="Original thumb capture"
+                      alt="Blue ink thumb impression"
                       height={640}
-                      src={originalImage}
+                      src={inkImage}
                       unoptimized
                       width={480}
                     />
                   ) : (
-                    <div className="letter__placeholder">No capture yet</div>
+                    <div className="letter__placeholder">No thumb impression yet</div>
                   )}
                 </figure>
                 <figure className="letter__figure letter__figure--scan">
-                  <span>Enhanced Scan Preview</span>
+                  <span>Reference Scan</span>
                   {enhancedImage ? (
                     <NextImage
                       alt="Enhanced fingerprint preview"
@@ -462,6 +511,12 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
                     <div className="letter__placeholder">No scan preview yet</div>
                   )}
                 </figure>
+              </div>
+
+              <div className="letter__facts">
+                <p>Applicant: {applicantName || "Pending name"}</p>
+                <p>Document reference: {documentRef || "Pending reference"}</p>
+                <p>Date recorded: {capturedAt || getTodayValue()}</p>
               </div>
 
               <div className="letter__signoff">
@@ -488,10 +543,10 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
     <div className="grid capture-layout">
       <section className="hero hero--compact">
         <p className="eyebrow">ALLANTECH Organization</p>
-        <h1>Phone Camera Thumb Capture</h1>
+        <h1>Thumb Intake Desk</h1>
         <p>
-          Open this page on a phone, allow camera access, place the thumb close to the
-          lens, and capture a print-ready fingerprint letter inside the same project.
+          Use a phone camera to record a clear thumb impression, prepare a blue-ink print
+          version, and place it into an official ALLANTECH letter without leaving this app.
         </p>
         <div className="security-note">
           <strong>Camera origin:</strong>{" "}
@@ -522,9 +577,12 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
 
       <section className="card studio">
         <div className="card__header">
-          <p className="eyebrow">Capture Form</p>
-          <h2>Capture Details</h2>
-          <p>Keep the lens clean, use bright light, and center the thumb inside the guide.</p>
+          <p className="eyebrow">Operator Sheet</p>
+          <h2>Capture Record</h2>
+          <p>
+            Keep the lens clean, use bright light, and fill the guide with the center of
+            the thumb. A close, steady frame gives the best ridge definition.
+          </p>
         </div>
 
         <div className="form-grid">
@@ -582,6 +640,21 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
         </div>
 
         <div className="studio__preview">
+          <div className="intake-strip">
+            <div>
+              <span>Step 1</span>
+              <strong>Allow camera access</strong>
+            </div>
+            <div>
+              <span>Step 2</span>
+              <strong>Frame the thumb tightly</strong>
+            </div>
+            <div>
+              <span>Step 3</span>
+              <strong>Issue the letter</strong>
+            </div>
+          </div>
+
           <div className="camera-frame">
             <video muted playsInline ref={videoRef} />
             <div className="camera-guide" />
@@ -594,7 +667,7 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
 
           <div className="stack-inline">
             <Button disabled={!cameraReady} onClick={captureFingerprint} type="button">
-              Capture Thumb
+              Record Thumb
             </Button>
             <Button onClick={stopCamera} type="button" variant="secondary">
               Stop Camera
@@ -623,17 +696,17 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
 
       <section className="card results">
         <div className="card__header">
-          <p className="eyebrow">Scan Result</p>
-          <h2>Captured Thumb Panels</h2>
+          <p className="eyebrow">Output Review</p>
+          <h2>Capture Panels</h2>
           <p>
-            The enhanced version increases contrast to make ridge structure easier to
-            inspect before printing.
+            Review the raw crop, the blue-ink print impression, and the reference scan.
+            The issued letter uses the blue-ink impression rather than the plain photograph.
           </p>
         </div>
 
-        <div className="results__grid">
+        <div className="results__grid results__grid--triple">
           <figure className="result-card">
-            <span>Original</span>
+            <span>Camera Crop</span>
             {originalImage ? (
               <NextImage
                 alt="Original thumb photograph"
@@ -646,8 +719,22 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
               <div className="result-placeholder">No capture yet</div>
             )}
           </figure>
+          <figure className="result-card result-card--ink">
+            <span>Blue Ink Print</span>
+            {inkImage ? (
+              <NextImage
+                alt="Blue ink print thumb"
+                height={640}
+                src={inkImage}
+                unoptimized
+                width={480}
+              />
+            ) : (
+              <div className="result-placeholder">No blue-ink print yet</div>
+            )}
+          </figure>
           <figure className="result-card">
-            <span>Enhanced</span>
+            <span>Reference Scan</span>
             {enhancedImage ? (
               <NextImage
                 alt="Enhanced thumb scan"

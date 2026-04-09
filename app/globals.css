@@ -52,6 +52,11 @@ a {
   margin-bottom: 0;
 }
 
+.hero--station {
+  grid-template-columns: 1.7fr 0.9fr;
+  align-items: stretch;
+}
+
 .hero h1,
 .card h1,
 .card h2 {
@@ -92,6 +97,34 @@ code {
 .grid {
   display: grid;
   gap: 1.5rem;
+}
+
+.station-copy,
+.station-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.station-panel {
+  align-content: start;
+  padding: 1.25rem;
+  border-radius: 26px;
+  background:
+    linear-gradient(180deg, rgba(18, 32, 51, 0.94), rgba(31, 54, 84, 0.96));
+  color: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow);
+}
+
+.station-panel span {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: rgba(186, 216, 255, 0.82);
+}
+
+.station-panel strong {
+  font-size: 1.05rem;
+  font-weight: 600;
 }
 
 .card {
@@ -223,6 +256,33 @@ code {
   gap: 1rem;
 }
 
+.intake-strip {
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.intake-strip div {
+  display: grid;
+  gap: 0.28rem;
+  padding: 0.9rem 1rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(12, 91, 154, 0.1);
+}
+
+.intake-strip span {
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent-strong);
+}
+
+.intake-strip strong {
+  font-size: 0.98rem;
+  font-weight: 600;
+}
+
 .security-note,
 .help-card {
   padding: 1rem 1.1rem;
@@ -281,6 +341,10 @@ code {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.results__grid--triple {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .result-card,
 .letter__figure {
   display: grid;
@@ -315,6 +379,14 @@ code {
     linear-gradient(135deg, rgba(17, 25, 40, 0.94), rgba(35, 56, 88, 0.92));
 }
 
+.letter__figure--ink img,
+.result-card--ink img {
+  object-fit: contain;
+  background:
+    linear-gradient(180deg, rgba(248, 251, 255, 1), rgba(234, 241, 251, 1));
+  padding: 1rem;
+}
+
 .result-placeholder,
 .letter__placeholder {
   display: grid;
@@ -341,7 +413,8 @@ code {
 .letter__header,
 .letter__meta,
 .letter__body,
-.letter__signoff {
+.letter__signoff,
+.letter__facts {
   display: grid;
   gap: 0.75rem;
 }
@@ -371,6 +444,14 @@ code {
   justify-items: end;
   color: #526173;
   font-size: 0.95rem;
+}
+
+.letter__facts {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 1rem 1.2rem;
+  border-radius: 18px;
+  background: rgba(12, 91, 154, 0.06);
+  color: #31445e;
 }
 
 @media print {
@@ -418,7 +499,10 @@ code {
   .form-grid,
   .results__grid,
   .letter__images,
-  .letter__header {
+  .letter__header,
+  .letter__facts,
+  .hero--station,
+  .intake-strip {
     grid-template-columns: 1fr;
   }
 

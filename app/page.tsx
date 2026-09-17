@@ -8,8 +8,9 @@ export default function HomePage() {
           <p className="eyebrow">ALLANTECH Organization</p>
           <h1>Official Thumb Impression Capture</h1>
           <p>
-            Securely capture your thumb impression and generate a professional document 
-            suitable for official records. All processing is done securely within your browser.
+            Capture a verified fingerprint using a certified Mantra MFS500
+            biometric scanner and generate a professional document suitable for
+            official records.
           </p>
           <div className="hero__actions">
             <Link className="button button--primary" href="/register">
@@ -22,8 +23,8 @@ export default function HomePage() {
         </div>
         <div className="station-panel">
           <span>Document Includes</span>
-          <strong>Secure capture</strong>
-          <strong>Professional impression</strong>
+          <strong>Certified biometric capture</strong>
+          <strong>Device verification certificate</strong>
           <strong>Print-ready record</strong>
         </div>
       </section>

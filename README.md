@@ -1,13 +1,12 @@
-# ALLANTECH Thumb Intake Desk
+# ALLANTECH Fingerprint Intake Desk
 
-ALLANTECH Thumb Intake Desk is a Next.js application for capturing a thumb image from a phone camera, transforming it into a blue-ink administrative impression, and placing the result into a printable ALLANTECH letter.
+ALLANTECH Fingerprint Intake Desk is a Next.js application for capturing a verified fingerprint from a physical Mantra MFS500 biometric scanner and placing a digital capture certificate into a printable ALLANTECH letter.
 
-This project is designed for practical intake work rather than flashy demo behavior. A phone operator can:
+This project is designed for practical intake work rather than flashy demo behavior. An operator can:
 
-- allow camera access
-- frame and capture a thumb image
-- review the raw crop and processed scan
-- generate a blue-ink impression for printing
+- connect the Mantra MFS500 scanner
+- capture a fingerprint and review the device's quality score
+- review the biometric capture certificate (device, serial, quality, PID data hash)
 - issue a printable confirmation letter from the same workflow
 
 ## What The App Does
@@ -15,25 +14,21 @@ This project is designed for practical intake work rather than flashy demo behav
 The current workflow is centered around two main routes:
 
 - `/register`
-  Camera intake desk for permission, capture, import, and review
+  Scanner intake desk for connecting the device, capturing, and review
 - `/dashboard`
-  Printable ALLANTECH letter using the captured thumb impression
+  Printable ALLANTECH letter using the captured fingerprint certificate
 
 The app stores the current capture session in browser local storage so the operator can move from capture to print without losing the record.
 
 ## Core Features
 
 - Next.js App Router with TypeScript
-- Mobile-friendly camera capture flow
-- Secure-context detection for browser camera access
-- Camera permission status messaging
-- Fallback camera request path when the preferred back camera is unavailable
-- In-browser image processing for:
-  - raw crop
-  - reference scan
-  - blue-ink thumb impression
+- Mantra MFS500 fingerprint capture via the local Mantra RD Service
+- Server-side proxy to the RD Service (avoids HTTPS/mixed-content and CORS issues)
+- Device connection status messaging
+- Biometric capture certificate (device serial/model, quality score, capture timestamp, PID data hash)
 - Printable ALLANTECH confirmation letter
-- Render deployment via Blueprint
+- Render deployment via Blueprint (for the app UI; see deployment note below)
 
 ## Tech Stack
 
@@ -45,14 +40,16 @@ The app stores the current capture session in browser local storage so the opera
 
 ## Important Reality Check
 
-This project is a camera-assisted thumb capture workflow.
+This project captures fingerprints through Mantra's UIDAI-compliant RD Service, the same interface used for Aadhaar-grade biometric devices. Because that service is UIDAI-certified, it deliberately never exposes a raw fingerprint image to the calling page — only capture metadata (quality score, device identity, timestamp) and an encrypted PID data block.
 
-It is not a forensic fingerprint scanner and it is not a certified biometric matching system. The image processing improves presentation and document usability, but it does not replace dedicated hardware fingerprint devices for legal or forensic-grade enrollment.
+That means the printed letter shows a **capture certificate**, not a picture of the fingerprint. The certificate's PID data hash can be used to verify the underlying encrypted capture matches what the device produced, but decrypting or matching the fingerprint itself requires UIDAI/AUA infrastructure this app does not implement.
 
 ## Project Structure
 
 ```text
 app/
+  api/fingerprint/capture/route.ts
+  api/fingerprint/device-info/route.ts
   dashboard/page.tsx
   login/page.tsx
   page.tsx
@@ -66,6 +63,7 @@ components/
 lib/
   auth.ts
   db.ts
+  mantraRdService.ts
   webauthn.ts
 prisma/
   schema.prisma
@@ -75,8 +73,8 @@ schema.sql
 
 Notes:
 
-- The active user-facing experience is the camera-based intake flow.
-- Some legacy auth-related files are still present in the repo, but the current product flow is the thumb capture and print workflow.
+- The active user-facing experience is the scanner-based intake flow.
+- Some legacy auth-related files are still present in the repo, but the current product flow is the fingerprint capture and print workflow.
 
 ## Local Setup
 
@@ -104,86 +102,42 @@ npm run dev
 http://localhost:3000
 ```
 
-## Local Camera Testing
+## Mantra MFS500 Scanner Setup
 
-### Best option on the same computer
+The Mantra MFS500 does not talk to the browser directly — it talks through **Mantra's RD Service**, a small local service the Mantra driver installs on the operator's computer. This app's server calls that local service on the operator's behalf, so **the Next.js app must run on the same machine as the scanner** (a local/on-prem or kiosk deployment, not a remote host like Render).
 
-Use:
+1. Install the Mantra MFS500 driver and RD Service on the operator's PC, and plug in the scanner.
+2. Confirm the RD Service is running (it typically listens on `https://127.0.0.1:11100` with a self-signed local certificate).
+3. Set the following in `.env` if your installed service uses different values (see [.env.example](.env.example)):
 
-```text
-http://localhost:3000/register
+```env
+RD_SERVICE_BASE_URL=https://127.0.0.1:11100
+RD_SERVICE_INFO_PATH=/rd/info
+RD_SERVICE_CAPTURE_PATH=/rd/capture
+RD_SERVICE_CAPTURE_TIMEOUT_MS=10000
+RD_SERVICE_PID_FORMAT=0
+RD_SERVICE_PID_VERSION=2.0
+RD_SERVICE_ENV=P
+RD_SERVICE_WADH=
+RD_SERVICE_POSH=UNKNOWN
+RD_SERVICE_ALLOW_SELF_SIGNED=true
 ```
 
-Browsers usually allow camera access on `localhost` because it is treated as a secure local origin.
+Exact paths and method names can vary slightly between RD Service builds. If capture calls fail, check [lib/mantraRdService.ts](lib/mantraRdService.ts) and verify these values against your installed service's documentation or Postman collection.
 
-### Best option on a phone over the same network
-
-Use HTTPS dev mode:
-
-```bash
-npm run dev:https
-```
-
-Then open on your phone:
-
-```text
-https://YOUR-PC-LAN-IP:3000/register
-```
-
-Example:
-
-```text
-https://192.168.1.10:3000/register
-```
-
-Important:
-
-- phone and computer must be on the same Wi-Fi or LAN
-- the browser may show a certificate warning for local HTTPS
-- you may need to trust the local development certificate before camera access works
-
-### Why plain LAN HTTP often fails
-
-This URL usually loads the page but still blocks the camera:
-
-```text
-http://192.168.x.x:3000
-```
-
-That happens because mobile browsers normally require a secure context for camera APIs. `localhost` is special, but a plain network IP over `http://` is not.
+4. Run the app (`npm run dev` or a production build) on that same machine, and open `/register`.
+5. Click **Connect Scanner** to confirm the RD Service and device are reachable, then **Capture Fingerprint**.
 
 ## How To Use The App
 
 1. Open `/register`
 2. Fill in the intake record fields
-3. Tap `Allow Camera`
-4. Place the thumb inside the on-screen guide
-5. Tap `Record Thumb`
-6. Review:
-   - camera crop
-   - blue-ink print version
-   - reference scan
+3. Click `Connect Scanner`
+4. Have the applicant place their thumb on the MFS500 sensor
+5. Click `Capture Fingerprint`
+6. Review the capture certificate (quality score, device serial, PID data hash)
 7. Open `/dashboard`
 8. Print the ALLANTECH letter
-
-### Alternative capture path
-
-If direct camera access is unavailable, you can import an existing image file and the app will still generate:
-
-- an enhanced scan preview
-- a blue-ink thumb impression
-- a printable letter
-
-## Blue-Ink Print Logic
-
-The printed letter does not use the plain camera photo as the main thumb mark.
-
-Instead, the app creates a processed blue-ink version intended to look closer to an administrative thumb impression on paper. The letter keeps a separate reference scan for visual review.
-
-This means the print flow contains:
-
-- a blue-ink thumb impression for the main document presentation
-- a processed reference scan beside it
 
 ## Scripts
 
@@ -192,7 +146,7 @@ This means the print flow contains:
 - `npm run dev:network`
   Start the dev server on `0.0.0.0`
 - `npm run dev:https`
-  Start the dev server with HTTPS for better mobile camera testing
+  Start the dev server with HTTPS
 - `npm run build`
   Create a production build
 - `npm run start`
@@ -224,67 +178,31 @@ NEXT_PUBLIC_RP_ID=localhost
 ORIGIN=http://localhost:3000
 DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/fingerprint_web?schema=public
 SESSION_SECRET=replace-with-a-long-random-string
+
+RD_SERVICE_BASE_URL=https://127.0.0.1:11100
+RD_SERVICE_INFO_PATH=/rd/info
+RD_SERVICE_CAPTURE_PATH=/rd/capture
+RD_SERVICE_CAPTURE_TIMEOUT_MS=10000
+RD_SERVICE_PID_FORMAT=0
+RD_SERVICE_PID_VERSION=2.0
+RD_SERVICE_ENV=P
+RD_SERVICE_WADH=
+RD_SERVICE_POSH=UNKNOWN
+RD_SERVICE_ALLOW_SELF_SIGNED=true
 ```
 
 Notes:
 
 - `DATABASE_URL` is required if you use Prisma-backed features
 - `ORIGIN` should match the real app URL in each environment
-- some legacy env vars remain from the earlier auth foundation, but they do not drive the current camera workflow
+- `RD_SERVICE_*` variables configure the local Mantra RD Service connection — see the scanner setup section above
+- some legacy env vars remain from the earlier auth foundation, but they do not drive the current fingerprint capture workflow
 
-## Render Deployment
+## Deployment Note
 
-This repo includes [render.yaml](/home/allanmox/ALLANMOX/PROJECT/fingerprint-web/render.yaml) for Render Blueprint deployment.
+Because fingerprint capture requires the app server to reach the scanner's RD Service on `127.0.0.1`, capture only works when the Next.js server runs on the same machine as the scanner (a local kiosk or on-prem install). A remotely hosted deployment (e.g. Render) can still serve the app's other routes, but `/register` and `/dashboard` capture flows will not be able to reach a scanner on an operator's local network from there.
 
-The Blueprint creates:
-
-- a web service named `fingerprint-web`
-- a Postgres database named `fingerprint-web-db`
-
-### Render Build Flow
-
-The Render Blueprint currently uses:
-
-- build:
-
-```text
-npm install --include=dev && npm run prisma:push && npm run build
-```
-
-- start:
-
-```text
-npm start
-```
-
-`npm run prisma:push` is used because the repository does not currently contain committed Prisma migration files.
-
-### Render Environment Values
-
-On Render, use:
-
-- `ORIGIN`
-  Example:
-
-```text
-https://fingerprint-web.onrender.com
-```
-
-- `NEXT_PUBLIC_RP_ID`
-  Hostname only:
-
-```text
-fingerprint-web.onrender.com
-```
-
-Important:
-
-- `ORIGIN` includes `https://`
-- `NEXT_PUBLIC_RP_ID` must be hostname only, without `https://`
-
-### Why Render Helps For Camera Access
-
-Render serves the app over HTTPS, which is exactly what mobile browsers want for camera permission. That makes it much easier to test the camera flow on a phone than a plain LAN `http://` address.
+[render.yaml](render.yaml) remains available for hosting a non-capture deployment (e.g. an admin view over previously captured records once server-side persistence is added).
 
 ## Verification
 
@@ -298,13 +216,13 @@ npm run build
 
 ## Recommended Next Improvements
 
-- remove the remaining legacy auth routes if the project is now permanently camera-first
-- persist capture records in PostgreSQL instead of only browser local storage
+- remove the remaining legacy auth routes if the project is now permanently scanner-first
+- persist capture records (including the encrypted PID data blob) in PostgreSQL instead of only browser local storage
 - add server-side document numbering
 - add operator accounts and intake history
 - generate downloadable PDF letters
-- add image quality scoring for poor lighting or blur
+- surface RD Service error codes with device-specific troubleshooting guidance
 
 ## License / Internal Use
 
-If this project is for internal ALLANTECH operational use, add your organization’s preferred license or internal usage notice here.
+If this project is for internal ALLANTECH operational use, add your organization's preferred license or internal usage notice here.

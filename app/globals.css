@@ -197,6 +197,39 @@ code {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.field-password-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.field-password-wrap input {
+  padding-right: 2.75rem;
+}
+
+.field-password-toggle {
+  position: absolute;
+  right: 0.5rem;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 10px;
+}
+
+.field-password-toggle:hover {
+  color: var(--text);
+  background: rgba(35, 23, 13, 0.06);
+}
+
+.field-password-toggle:focus-visible {
+  outline: 2px solid rgba(15, 118, 110, 0.2);
+}
+
 .field--grow {
   flex: 1;
   min-width: 220px;

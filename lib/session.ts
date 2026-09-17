@@ -21,7 +21,9 @@ function getSessionSecret() {
 }
 
 function sign(value: string) {
-  return createHmac("sha256", getSessionSecret()).update(value).digest("base64url");
+  return createHmac("sha256", getSessionSecret())
+    .update(value)
+    .digest("base64url");
 }
 
 function encode<T>(payload: T) {

@@ -30,7 +30,11 @@ export function AdminNav({ email }: { email: string }) {
         {LINKS.map((link) => (
           <Link
             key={link.href}
-            className={pathname.startsWith(link.href) ? "admin-nav__link admin-nav__link--active" : "admin-nav__link"}
+            className={
+              pathname.startsWith(link.href)
+                ? "admin-nav__link admin-nav__link--active"
+                : "admin-nav__link"
+            }
             href={link.href}
           >
             {link.label}

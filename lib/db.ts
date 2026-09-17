@@ -13,4 +13,3 @@ export const db =
 if (process.env.NODE_ENV !== "production") {
   globalThis.prisma = db;
 }
-

@@ -10,7 +10,11 @@ type RequirementItem = {
   isActive: boolean;
 };
 
-export function RequirementItemsManager({ initialItems }: { initialItems: RequirementItem[] }) {
+export function RequirementItemsManager({
+  initialItems,
+}: {
+  initialItems: RequirementItem[];
+}) {
   const [items, setItems] = useState(initialItems);
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
@@ -36,7 +40,11 @@ export function RequirementItemsManager({ initialItems }: { initialItems: Requir
       setItems((current) => [...current, payload.item]);
       setLabel("");
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Could not add requirement.");
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Could not add requirement.",
+      );
     } finally {
       setBusy(false);
     }
@@ -65,12 +73,18 @@ export function RequirementItemsManager({ initialItems }: { initialItems: Requir
         {items.map((item) => (
           <div className="checklist__item" key={item.id}>
             <label>{item.label}</label>
-            <Button onClick={() => handleRetire(item.id)} type="button" variant="secondary">
+            <Button
+              onClick={() => handleRetire(item.id)}
+              type="button"
+              variant="secondary"
+            >
               Retire
             </Button>
           </div>
         ))}
-        {items.length === 0 ? <p className="status">No active requirements.</p> : null}
+        {items.length === 0 ? (
+          <p className="status">No active requirements.</p>
+        ) : null}
       </div>
 
       <form className="stack-inline" onSubmit={handleAdd}>

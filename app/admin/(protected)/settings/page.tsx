@@ -45,7 +45,9 @@ export default async function SettingsPage() {
             </div>
             <div className="checklist__item">
               <label>Expected days</label>
-              <span>{expectedWeekdays.map((day) => WEEKDAY_LABELS[day]).join(", ")}</span>
+              <span>
+                {expectedWeekdays.map((day) => WEEKDAY_LABELS[day]).join(", ")}
+              </span>
             </div>
           </dl>
         ) : (
@@ -60,8 +62,9 @@ export default async function SettingsPage() {
           <p className="eyebrow">Registration Checklist</p>
           <h2>Requirement Items</h2>
           <p>
-            Students must complete every active requirement below, plus fingerprint enrollment,
-            before they can use kiosk attendance scanning.
+            Students must complete every active requirement below, plus
+            fingerprint enrollment, before they can use kiosk attendance
+            scanning.
           </p>
         </div>
         <RequirementItemsManager initialItems={requirementItems} />

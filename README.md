@@ -1,212 +1,109 @@
-# ALLANTECH Fingerprint Intake Desk
+# Mloganzila Hospital Field Attendance System
 
-ALLANTECH Fingerprint Intake Desk is a Next.js application for capturing a verified fingerprint from a physical Mantra MFS500 biometric scanner and placing a digital capture certificate into a printable ALLANTECH letter.
+A Next.js application for tracking field placement attendance at Mloganzila Hospital: students
+check in and out with a Mantra MFS500 fingerprint scanner, an admin registers students and tracks
+a requirements checklist before they're allowed onto the field, and reports cover daily,
+range, and flagged (late/absent) attendance.
 
-This project is designed for practical intake work rather than flashy demo behavior. An operator can:
+## How It Works
 
-- connect the Mantra MFS500 scanner
-- capture a fingerprint and review the device's quality score
-- review the biometric capture certificate (device, serial, quality, PID data hash)
-- issue a printable confirmation letter from the same workflow
-
-## What The App Does
-
-The current workflow is centered around two main routes:
-
-- `/register`
-  Scanner intake desk for connecting the device, capturing, and review
-- `/dashboard`
-  Printable ALLANTECH letter using the captured fingerprint certificate
-
-The app stores the current capture session in browser local storage so the operator can move from capture to print without losing the record.
-
-## Core Features
-
-- Next.js App Router with TypeScript
-- Mantra MFS500 fingerprint capture via the local Mantra RD Service
-- Server-side proxy to the RD Service (avoids HTTPS/mixed-content and CORS issues)
-- Device connection status messaging
-- Biometric capture certificate (device serial/model, quality score, capture timestamp, PID data hash)
-- Printable ALLANTECH confirmation letter
-- Render deployment via Blueprint (for the app UI; see deployment note below)
+- **Admin** (`/admin/login` → `/admin/students`, `/admin/reports/*`, `/admin/settings`) registers
+  students, tracks their registration checklist, enrolls their fingerprint, and reviews attendance
+  reports.
+- **Kiosk** (`/kiosk`) is a full-screen, shared-device scan screen for the hospital entrance. A
+  logged-in admin/supervisor leaves it open; each student walks up and scans — the system
+  auto-identifies them (1:N fingerprint match) and toggles their attendance: first scan of the day
+  checks them in, the next scan checks them out.
+- A student is only allowed to scan once they have a **fingerprint enrolled** and every active
+  **requirement checklist item** marked complete by an admin (see `/admin/settings` to manage the
+  checklist — it's extensible, no code change needed to add a new requirement).
 
 ## Tech Stack
 
-- Next.js
-- React
-- TypeScript
-- Prisma
-- PostgreSQL
-
-## Important Reality Check
-
-This project captures fingerprints through Mantra's UIDAI-compliant RD Service, the same interface used for Aadhaar-grade biometric devices. Because that service is UIDAI-certified, it deliberately never exposes a raw fingerprint image to the calling page — only capture metadata (quality score, device identity, timestamp) and an encrypted PID data block.
-
-That means the printed letter shows a **capture certificate**, not a picture of the fingerprint. The certificate's PID data hash can be used to verify the underlying encrypted capture matches what the device produced, but decrypting or matching the fingerprint itself requires UIDAI/AUA infrastructure this app does not implement.
-
-## Project Structure
-
-```text
-app/
-  api/fingerprint/capture/route.ts
-  api/fingerprint/device-info/route.ts
-  dashboard/page.tsx
-  login/page.tsx
-  page.tsx
-  register/page.tsx
-  globals.css
-  layout.tsx
-components/
-  Button.tsx
-  FingerprintStudio.tsx
-  Form.tsx
-lib/
-  auth.ts
-  db.ts
-  mantraRdService.ts
-  webauthn.ts
-prisma/
-  schema.prisma
-render.yaml
-schema.sql
-```
-
-Notes:
-
-- The active user-facing experience is the scanner-based intake flow.
-- Some legacy auth-related files are still present in the repo, but the current product flow is the fingerprint capture and print workflow.
+- Next.js (App Router) + TypeScript
+- Prisma + MySQL (Aiven)
+- Mantra MFS500 fingerprint scanner, via a local capture/identify service
 
 ## Local Setup
 
-1. Install dependencies:
-
 ```bash
 npm install
-```
-
-2. If you want Prisma client generated explicitly:
-
-```bash
 npm run prisma:generate
-```
-
-3. Start the app locally:
-
-```bash
+npm run prisma:migrate    # applies the schema to your database
+npm run prisma:seed       # creates the field site, requirement catalog, and bootstrap admin
 npm run dev
 ```
 
-4. Open:
+Open `http://localhost:3000`, then sign in at `/admin/login` with the `ADMIN_SEED_EMAIL` /
+`ADMIN_SEED_PASSWORD` from your `.env`.
 
-```text
-http://localhost:3000
-```
+## Fingerprint Scanner Setup
 
-## Mantra MFS500 Scanner Setup
+Attendance scanning needs the Mantra MFS500's **local capture/identify service** running on the
+same machine as the app server (it talks to `127.0.0.1`) — this is a different local service than
+the UIDAI RD Service used for Aadhaar authentication, because RD Service only returns an encrypted,
+non-matchable PID block. The mode used here is the one meant for attendance/access-control, which
+returns a raw fingerprint template that can be enrolled once and matched against on every scan.
 
-The Mantra MFS500 does not talk to the browser directly — it talks through **Mantra's RD Service**, a small local service the Mantra driver installs on the operator's computer. This app's server calls that local service on the operator's behalf, so **the Next.js app must run on the same machine as the scanner** (a local/on-prem or kiosk deployment, not a remote host like Render).
+**`MANTRA_MODE` controls which client is used:**
 
-1. Install the Mantra MFS500 driver and RD Service on the operator's PC, and plug in the scanner.
-2. Confirm the RD Service is running (it typically listens on `https://127.0.0.1:11100` with a self-signed local certificate).
-3. Set the following in `.env` if your installed service uses different values (see [.env.example](.env.example)):
+- `mock` (default, recommended for development) — an in-memory fake scanner. Enroll a student's
+  "fingerprint" and it'll auto-match on the next kiosk scan; no hardware needed. See
+  `lib/fingerprintDevice/mock.ts` for test-override options (simulate no-match/device-error via
+  an `x-mock-identify` header on `/api/kiosk/scan`).
+- `live` — talks to the real local Mantra service via `lib/fingerprintDevice/localService.ts`.
 
-```env
-RD_SERVICE_BASE_URL=https://127.0.0.1:11100
-RD_SERVICE_INFO_PATH=/rd/info
-RD_SERVICE_CAPTURE_PATH=/rd/capture
-RD_SERVICE_CAPTURE_TIMEOUT_MS=10000
-RD_SERVICE_PID_FORMAT=0
-RD_SERVICE_PID_VERSION=2.0
-RD_SERVICE_ENV=P
-RD_SERVICE_WADH=
-RD_SERVICE_POSH=UNKNOWN
-RD_SERVICE_ALLOW_SELF_SIGNED=true
-```
+### Hardware bring-up checklist
 
-Exact paths and method names can vary slightly between RD Service builds. If capture calls fail, check [lib/mantraRdService.ts](lib/mantraRdService.ts) and verify these values against your installed service's documentation or Postman collection.
+There was no live MFS500 or vendor SDK documentation available while building this integration —
+the exact endpoint paths and JSON request/response shapes in `lib/fingerprintDevice/localService.ts`
+are a best-guess default, isolated behind env vars specifically so they can be corrected without
+touching any other code. Once you have the real device and service:
 
-4. Run the app (`npm run dev` or a production build) on that same machine, and open `/register`.
-5. Click **Connect Scanner** to confirm the RD Service and device are reachable, then **Capture Fingerprint**.
+1. Verify the service's actual base URL/port and set `MANTRA_LOCAL_BASE_URL`.
+2. Confirm the info/enroll/identify endpoint paths and HTTP methods, and update
+   `MANTRA_LOCAL_INFO_PATH` / `MANTRA_LOCAL_ENROLL_PATH` / `MANTRA_LOCAL_IDENTIFY_PATH` and the
+   request/response parsing in `lib/fingerprintDevice/localService.ts` to match.
+3. Confirm whether the local service does 1:N matching server-side (assumed — `identify()` expects
+   a `matched`/`vendorTemplateId`/`matchScore` response) or only returns raw templates. If it's the
+   latter, client-side matching against stored templates would need to be built (see the
+   `selfMatch` note in `lib/fingerprintDevice/localService.ts`'s header comment) — this was
+   deliberately not built speculatively.
+4. Tune `MANTRA_LOCAL_MATCH_THRESHOLD` against real match-score distributions.
+5. Switch `MANTRA_MODE=live`.
 
-## How To Use The App
-
-1. Open `/register`
-2. Fill in the intake record fields
-3. Click `Connect Scanner`
-4. Have the applicant place their thumb on the MFS500 sensor
-5. Click `Capture Fingerprint`
-6. Review the capture certificate (quality score, device serial, PID data hash)
-7. Open `/dashboard`
-8. Print the ALLANTECH letter
-
-## Scripts
-
-- `npm run dev`
-  Start the local development server
-- `npm run dev:network`
-  Start the dev server on `0.0.0.0`
-- `npm run dev:https`
-  Start the dev server with HTTPS
-- `npm run build`
-  Create a production build
-- `npm run start`
-  Start the production server
-- `npm run lint`
-  Run ESLint
-- `npm run format`
-  Format the codebase with Prettier
-- `npm run format:check`
-  Check formatting
-- `npm run prisma:generate`
-  Generate Prisma client
-- `npm run prisma:migrate`
-  Run Prisma dev migrations locally
-- `npm run prisma:push`
-  Push schema changes directly to the database
-- `npm run prisma:deploy`
-  Run deploy migrations if migrations exist
-- `npm run prisma:studio`
-  Open Prisma Studio
-
-## Environment Variables
-
-Local `.env` example:
-
-```env
-NEXT_PUBLIC_RP_NAME=ALLANMOX
-NEXT_PUBLIC_RP_ID=localhost
-ORIGIN=http://localhost:3000
-DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/fingerprint_web?schema=public
-SESSION_SECRET=replace-with-a-long-random-string
-
-RD_SERVICE_BASE_URL=https://127.0.0.1:11100
-RD_SERVICE_INFO_PATH=/rd/info
-RD_SERVICE_CAPTURE_PATH=/rd/capture
-RD_SERVICE_CAPTURE_TIMEOUT_MS=10000
-RD_SERVICE_PID_FORMAT=0
-RD_SERVICE_PID_VERSION=2.0
-RD_SERVICE_ENV=P
-RD_SERVICE_WADH=
-RD_SERVICE_POSH=UNKNOWN
-RD_SERVICE_ALLOW_SELF_SIGNED=true
-```
-
-Notes:
-
-- `DATABASE_URL` is required if you use Prisma-backed features
-- `ORIGIN` should match the real app URL in each environment
-- `RD_SERVICE_*` variables configure the local Mantra RD Service connection — see the scanner setup section above
-- some legacy env vars remain from the earlier auth foundation, but they do not drive the current fingerprint capture workflow
+Everything else in the app — schema, admin UI, kiosk flow, eligibility gating, reporting — is
+already built and tested against the mock, so hardware bring-up should only touch this one module.
 
 ## Deployment Note
 
-Because fingerprint capture requires the app server to reach the scanner's RD Service on `127.0.0.1`, capture only works when the Next.js server runs on the same machine as the scanner (a local kiosk or on-prem install). A remotely hosted deployment (e.g. Render) can still serve the app's other routes, but `/register` and `/dashboard` capture flows will not be able to reach a scanner on an operator's local network from there.
+Because attendance scanning requires the app server to reach the scanner's local service on
+`127.0.0.1`, the app must run on the same machine as the scanner (a kiosk PC at the hospital
+entrance) — not a remote host. The kiosk machine's clock/timezone should be set correctly
+(`Africa/Dar_es_Salaam`), since attendance date-bucketing and late-arrival flags use the server's
+local time with no timezone conversion.
 
-[render.yaml](render.yaml) remains available for hosting a non-capture deployment (e.g. an admin view over previously captured records once server-side persistence is added).
+[render.yaml](render.yaml) is still available for hosting the admin/reporting side remotely (it
+sets `MANTRA_MODE=mock` since Render's servers can't reach a scanner on a hospital LAN), but the
+`/kiosk` scan flow only works when the app runs on-site.
+
+## Environment Variables
+
+See [.env.example](.env.example). Key groups:
+
+- `DATABASE_URL`, `SESSION_SECRET` — required.
+- `ADMIN_SEED_EMAIL` / `ADMIN_SEED_PASSWORD` — used by `npm run prisma:seed` to create the
+  bootstrap admin account.
+- `MANTRA_MODE` / `MANTRA_LOCAL_*` — fingerprint scanner configuration, see above.
+
+## Scripts
+
+- `npm run dev` / `npm run build` / `npm run start`
+- `npm run lint` / `npm run format` / `npm run format:check`
+- `npm run prisma:generate` / `npm run prisma:migrate` / `npm run prisma:deploy` /
+  `npm run prisma:push` / `npm run prisma:seed` / `npm run prisma:studio`
 
 ## Verification
-
-The project has been checked with:
 
 ```bash
 npm run lint
@@ -214,15 +111,5 @@ npx tsc --noEmit
 npm run build
 ```
 
-## Recommended Next Improvements
-
-- remove the remaining legacy auth routes if the project is now permanently scanner-first
-- persist capture records (including the encrypted PID data blob) in PostgreSQL instead of only browser local storage
-- add server-side document numbering
-- add operator accounts and intake history
-- generate downloadable PDF letters
-- surface RD Service error codes with device-specific troubleshooting guidance
-
-## License / Internal Use
-
-If this project is for internal ALLANTECH operational use, add your organization's preferred license or internal usage notice here.
+Full end-to-end kiosk/attendance behavior (check-in/check-out toggling, eligibility gating,
+reporting) can be exercised without hardware using `MANTRA_MODE=mock`.

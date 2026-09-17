@@ -5,7 +5,9 @@ export type EligibilityResult = {
   reasons: string[];
 };
 
-export async function isStudentEligibleForKiosk(studentId: string): Promise<EligibilityResult> {
+export async function isStudentEligibleForKiosk(
+  studentId: string,
+): Promise<EligibilityResult> {
   const student = await db.student.findUnique({
     where: { id: studentId },
     include: {
@@ -31,10 +33,14 @@ export async function isStudentEligibleForKiosk(studentId: string): Promise<Elig
     reasons.push("Fingerprint not enrolled.");
   }
 
-  const incomplete = student.requirements.filter((requirement) => !requirement.isComplete);
+  const incomplete = student.requirements.filter(
+    (requirement) => !requirement.isComplete,
+  );
 
   for (const requirement of incomplete) {
-    reasons.push(`Requirement not complete: ${requirement.requirementItem.label}`);
+    reasons.push(
+      `Requirement not complete: ${requirement.requirementItem.label}`,
+    );
   }
 
   return { eligible: reasons.length === 0, reasons };

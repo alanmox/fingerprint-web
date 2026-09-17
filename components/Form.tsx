@@ -6,7 +6,12 @@ type FormProps = PropsWithChildren<{
   description: string;
 }>;
 
-export function Form({ eyebrow = "Mloganzila Field Desk", title, description, children }: FormProps) {
+export function Form({
+  eyebrow = "Mloganzila Field Desk",
+  title,
+  description,
+  children,
+}: FormProps) {
   return (
     <section className="card">
       <div className="card__header">

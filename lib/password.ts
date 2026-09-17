@@ -10,7 +10,10 @@ export async function hashPassword(plain: string): Promise<string> {
   return `${salt.toString("hex")}:${derivedKey.toString("hex")}`;
 }
 
-export async function verifyPassword(plain: string, stored: string): Promise<boolean> {
+export async function verifyPassword(
+  plain: string,
+  stored: string,
+): Promise<boolean> {
   const [saltHex, hashHex] = stored.split(":");
 
   if (!saltHex || !hashHex) {

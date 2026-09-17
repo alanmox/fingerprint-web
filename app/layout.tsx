@@ -4,7 +4,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Mloganzila Hospital — Field Attendance",
-  description: "Field placement attendance and registration for Mloganzila Hospital.",
+  description:
+    "Field placement attendance and registration for Mloganzila Hospital.",
 };
 
 export default function RootLayout({

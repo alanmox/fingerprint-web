@@ -13,14 +13,22 @@ export async function POST(request: Request) {
   const parsed = loginSchema.safeParse(await request.json().catch(() => null));
 
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid email or password." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid email or password." },
+      { status: 400 },
+    );
   }
 
   const { email, password } = parsed.data;
-  const admin = await db.admin.findUnique({ where: { email: email.toLowerCase() } });
+  const admin = await db.admin.findUnique({
+    where: { email: email.toLowerCase() },
+  });
 
   if (!admin || !(await verifyPassword(password, admin.passwordHash))) {
-    return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
+    return NextResponse.json(
+      { error: "Invalid email or password." },
+      { status: 401 },
+    );
   }
 
   await createAdminSession(admin.id, admin.email);

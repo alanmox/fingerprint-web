@@ -8,8 +8,9 @@ export default function HomePage() {
           <p className="eyebrow">Mloganzila Hospital</p>
           <h1>Field Placement Attendance</h1>
           <p>
-            Fingerprint-verified check-in and check-out for students on field placement at
-            Mloganzila Hospital, with admin-managed registration and reporting.
+            Fingerprint-verified check-in and check-out for students on field
+            placement at Mloganzila Hospital, with admin-managed registration
+            and reporting.
           </p>
           <div className="hero__actions">
             <Link className="button button--primary" href="/admin/login">

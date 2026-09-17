@@ -25,14 +25,18 @@ export default function AdminLoginPage() {
       });
 
       if (!response.ok) {
-        const payload = await response.json().catch(() => ({ error: "Login failed." }));
+        const payload = await response
+          .json()
+          .catch(() => ({ error: "Login failed." }));
         throw new Error(payload.error ?? "Login failed.");
       }
 
       router.push("/admin/students");
       router.refresh();
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Login failed.");
+      setError(
+        caughtError instanceof Error ? caughtError.message : "Login failed.",
+      );
     } finally {
       setBusy(false);
     }
@@ -40,7 +44,10 @@ export default function AdminLoginPage() {
 
   return (
     <div className="grid">
-      <Form title="Admin Login" description="Sign in to manage student registration and field attendance.">
+      <Form
+        title="Admin Login"
+        description="Sign in to manage student registration and field attendance."
+      >
         <form className="form-grid" onSubmit={handleSubmit}>
           <div className="field">
             <label htmlFor="email">Email</label>

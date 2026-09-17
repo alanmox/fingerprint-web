@@ -40,13 +40,19 @@ export async function POST(request: Request) {
   const parsed = createSchema.safeParse(await request.json().catch(() => null));
 
   if (!parsed.success) {
-    return NextResponse.json({ error: "A requirement label is required." }, { status: 400 });
+    return NextResponse.json(
+      { error: "A requirement label is required." },
+      { status: 400 },
+    );
   }
 
   const key = slugify(parsed.data.label);
 
   if (!key) {
-    return NextResponse.json({ error: "A requirement label is required." }, { status: 400 });
+    return NextResponse.json(
+      { error: "A requirement label is required." },
+      { status: 400 },
+    );
   }
 
   const existing = await db.requirementItem.findUnique({ where: { key } });
@@ -58,7 +64,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const maxSortOrder = await db.requirementItem.aggregate({ _max: { sortOrder: true } });
+  const maxSortOrder = await db.requirementItem.aggregate({
+    _max: { sortOrder: true },
+  });
 
   const item = await db.requirementItem.create({
     data: {

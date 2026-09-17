@@ -3,28 +3,136 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id             String          @id @default(cuid())
-  username       String          @unique
-  createdAt      DateTime        @default(now())
-  authenticators Authenticator[]
-}
-
-model Authenticator {
+model Admin {
   id           String   @id @default(cuid())
-  userId       String
-  credentialID Bytes    @unique
-  publicKey    Bytes
-  counter      Int
-  transports   String?
+  email        String   @unique
+  passwordHash String
+  name         String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  createdStudents       Student[]            @relation("StudentCreatedBy")
+  completedRequirements StudentRequirement[] @relation("RequirementCompletedBy")
 }
 
+model FieldSite {
+  id                   String   @id @default(cuid())
+  name                 String   @unique
+  location             String
+  timezone             String   @default("Africa/Dar_es_Salaam")
+  expectedStartMinutes Int      @default(480)
+  lateGraceMinutes     Int      @default(15)
+  expectedWeekdays     Json
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  students          Student[]
+  attendanceRecords AttendanceRecord[]
+  identifyAttempts  IdentifyAttempt[]
+}
+
+model Student {
+  id                 String   @id @default(cuid())
+  fieldSiteId        String
+  fullName           String
+  registrationNumber String   @unique
+  university         String
+  program            String
+  yearOfStudy        Int
+  phone              String
+  email              String?
+  isActive           Boolean  @default(true)
+  createdByAdminId   String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  fieldSite           FieldSite            @relation(fields: [fieldSiteId], references: [id])
+  createdByAdmin      Admin?               @relation("StudentCreatedBy", fields: [createdByAdminId], references: [id])
+  requirements        StudentRequirement[]
+  fingerprintTemplate FingerprintTemplate?
+  attendanceRecords   AttendanceRecord[]
+  identifyAttempts    IdentifyAttempt[]
+
+  @@index([fieldSiteId])
+}
+
+model RequirementItem {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  label     String
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  studentRequirements StudentRequirement[]
+}
+
+model StudentRequirement {
+  id                 String    @id @default(cuid())
+  studentId          String
+  requirementItemId  String
+  isComplete         Boolean   @default(false)
+  completedAt        DateTime?
+  completedByAdminId String?
+  notes              String?
+
+  student          Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  requirementItem  RequirementItem @relation(fields: [requirementItemId], references: [id])
+  completedByAdmin Admin?          @relation("RequirementCompletedBy", fields: [completedByAdminId], references: [id])
+
+  @@unique([studentId, requirementItemId])
+  @@index([requirementItemId])
+}
+
+model FingerprintTemplate {
+  id               String   @id @default(cuid())
+  studentId        String   @unique
+  template         Bytes
+  templateFormat   String   @default("ISO19794-2")
+  templateHash     String
+  vendorTemplateId String?
+  quality          Int
+  deviceSerial     String?
+  capturedAt       DateTime
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
+
+model AttendanceRecord {
+  id                 String    @id @default(cuid())
+  studentId          String
+  fieldSiteId        String
+  date               DateTime
+  checkInAt          DateTime
+  checkOutAt         DateTime?
+  checkInMatchScore  Int?
+  checkOutMatchScore Int?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  student   Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  fieldSite FieldSite @relation(fields: [fieldSiteId], references: [id])
+
+  @@unique([studentId, date])
+  @@index([fieldSiteId, date])
+}
+
+model IdentifyAttempt {
+  id               String   @id @default(cuid())
+  fieldSiteId      String
+  matchedStudentId String?
+  matchScore       Int?
+  outcome          String
+  createdAt        DateTime @default(now())
+
+  fieldSite      FieldSite @relation(fields: [fieldSiteId], references: [id])
+  matchedStudent Student?  @relation(fields: [matchedStudentId], references: [id])
+
+  @@index([fieldSiteId, createdAt])
+}

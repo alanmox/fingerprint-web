@@ -1,20 +1,13 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
-const SESSION_COOKIE = "amx_session";
-const REGISTRATION_COOKIE = "amx_registration";
-const AUTHENTICATION_COOKIE = "amx_authentication";
+const SESSION_COOKIE = "amx_admin_session";
 
 type SessionPayload = {
-  userId: string;
-  username: string;
+  adminId: string;
+  email: string;
   exp: number;
-};
-
-type ChallengePayload = {
-  challenge: string;
-  username: string;
-  expiresAt: number;
 };
 
 function getSessionSecret() {
@@ -61,11 +54,11 @@ function decode<T>(token: string): T | null {
   }
 }
 
-export async function createSession(userId: string, username: string) {
+export async function createAdminSession(adminId: string, email: string) {
   const cookieStore = await cookies();
   const payload: SessionPayload = {
-    userId,
-    username,
+    adminId,
+    email,
     exp: Date.now() + 1000 * 60 * 60 * 24 * 7,
   };
 
@@ -78,12 +71,12 @@ export async function createSession(userId: string, username: string) {
   });
 }
 
-export async function clearSession() {
+export async function clearAdminSession() {
   const cookieStore = await cookies();
   cookieStore.delete(SESSION_COOKIE);
 }
 
-export async function getSession() {
+export async function getAdminSession() {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
 
@@ -101,65 +94,12 @@ export async function getSession() {
   return payload;
 }
 
-async function setChallengeCookie(name: string, payload: ChallengePayload) {
-  const cookieStore = await cookies();
-  cookieStore.set(name, encode(payload), {
-    httpOnly: true,
-    sameSite: "strict",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 5,
-  });
-}
+export async function requireAdminSession() {
+  const session = await getAdminSession();
 
-async function getChallengeCookie(name: string) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(name)?.value;
-
-  if (!token) {
-    return null;
+  if (!session) {
+    redirect("/admin/login");
   }
 
-  const payload = decode<ChallengePayload>(token);
-
-  if (!payload || payload.expiresAt < Date.now()) {
-    cookieStore.delete(name);
-    return null;
-  }
-
-  return payload;
+  return session;
 }
-
-async function clearChallengeCookie(name: string) {
-  const cookieStore = await cookies();
-  cookieStore.delete(name);
-}
-
-export async function storeRegistrationChallenge(challenge: string, username: string) {
-  await setChallengeCookie(REGISTRATION_COOKIE, {
-    challenge,
-    username,
-    expiresAt: Date.now() + 1000 * 60 * 5,
-  });
-}
-
-export async function consumeRegistrationChallenge() {
-  const payload = await getChallengeCookie(REGISTRATION_COOKIE);
-  await clearChallengeCookie(REGISTRATION_COOKIE);
-  return payload;
-}
-
-export async function storeAuthenticationChallenge(challenge: string, username: string) {
-  await setChallengeCookie(AUTHENTICATION_COOKIE, {
-    challenge,
-    username,
-    expiresAt: Date.now() + 1000 * 60 * 5,
-  });
-}
-
-export async function consumeAuthenticationChallenge() {
-  const payload = await getChallengeCookie(AUTHENTICATION_COOKIE);
-  await clearChallengeCookie(AUTHENTICATION_COOKIE);
-  return payload;
-}
-

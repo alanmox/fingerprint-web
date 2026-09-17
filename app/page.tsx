@@ -5,27 +5,26 @@ export default function HomePage() {
     <div className="grid">
       <section className="hero hero--station">
         <div className="station-copy">
-          <p className="eyebrow">ALLANTECH Organization</p>
-          <h1>Official Thumb Impression Capture</h1>
+          <p className="eyebrow">Mloganzila Hospital</p>
+          <h1>Field Placement Attendance</h1>
           <p>
-            Capture a verified fingerprint using a certified Mantra MFS500
-            biometric scanner and generate a professional document suitable for
-            official records.
+            Fingerprint-verified check-in and check-out for students on field placement at
+            Mloganzila Hospital, with admin-managed registration and reporting.
           </p>
           <div className="hero__actions">
-            <Link className="button button--primary" href="/register">
-              Start Capture
+            <Link className="button button--primary" href="/admin/login">
+              Admin Login
             </Link>
-            <Link className="button button--secondary" href="/dashboard">
-              View Document
+            <Link className="button button--secondary" href="/kiosk">
+              Open Kiosk
             </Link>
           </div>
         </div>
         <div className="station-panel">
-          <span>Document Includes</span>
-          <strong>Certified biometric capture</strong>
-          <strong>Device verification certificate</strong>
-          <strong>Print-ready record</strong>
+          <span>System Includes</span>
+          <strong>Fingerprint-verified attendance</strong>
+          <strong>Student registration &amp; checklist</strong>
+          <strong>Daily &amp; range reporting</strong>
         </div>
       </section>
     </div>

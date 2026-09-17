@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ALLANTECH Fingerprint Capture",
-  description: "Phone camera thumb capture and printable ALLANTECH fingerprint letter.",
+  title: "Mloganzila Hospital — Field Attendance",
+  description: "Field placement attendance and registration for Mloganzila Hospital.",
 };
 
 export default function RootLayout({

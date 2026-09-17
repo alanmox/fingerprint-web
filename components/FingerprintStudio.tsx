@@ -108,12 +108,6 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
-  const [originDetails, setOriginDetails] = useState<{
-    origin: string;
-    isSecure: boolean;
-    hostname: string;
-  } | null>(null);
-  const [permissionState, setPermissionState] = useState<string>("unknown");
 
   useEffect(() => {
     try {
@@ -137,48 +131,6 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
     }
   }, []);
 
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    setOriginDetails({
-      origin: window.location.origin,
-      isSecure: window.isSecureContext,
-      hostname: window.location.hostname,
-    });
-  }, []);
-
-  useEffect(() => {
-    let ignore = false;
-
-    async function loadPermissionState() {
-      if (typeof navigator === "undefined" || !("permissions" in navigator)) {
-        return;
-      }
-
-      try {
-        const result = await navigator.permissions.query({
-          name: "camera" as PermissionName,
-        });
-
-        if (ignore) {
-          return;
-        }
-
-        setPermissionState(result.state);
-        result.onchange = () => setPermissionState(result.state);
-      } catch {
-        setPermissionState("unknown");
-      }
-    }
-
-    void loadPermissionState();
-
-    return () => {
-      ignore = true;
-    };
-  }, []);
 
   useEffect(() => {
     if (mode !== "capture") {
@@ -448,92 +400,94 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
     return (
       <div className="grid">
         <section className="card letter-shell">
-          <div className="card__header">
-            <p className="eyebrow">ALLANTECH Organization</p>
-            <h1>Fingerprint Confirmation Letter</h1>
-            <p>
-              Print this letter after capturing the thumb image. The fingerprint is placed
-              on the document as a blue-ink administrative impression rather than a plain photo.
-            </p>
+          <div className="card__header letter-actions">
+            <Button onClick={() => window.print()} type="button">
+              Print Official Letter
+            </Button>
+            <Link className="button button--secondary" href="/register">
+              Return to Capture
+            </Link>
           </div>
 
           <article className="letter" id="print-letter">
             <header className="letter__header">
               <div>
                 <p className="letter__brand">ALLANTECH ORGANIZATION</p>
-                <h2>Thumb Fingerprint Capture Record</h2>
+                <h2>Official Thumb Impression Record</h2>
               </div>
               <div className="letter__meta">
                 <span>Date: {capturedAt || getTodayValue()}</span>
-                <span>Ref: {documentRef || "Pending reference"}</span>
+                <span>Reference: {documentRef || "—"}</span>
               </div>
             </header>
 
             <div className="letter__body">
-              <p>To whom it may concern,</p>
-              <p>
-                This letter confirms that ALLANTECH has recorded a thumb impression for{" "}
-                <strong>{applicantName || "Unnamed applicant"}</strong> for the purpose
-                of <strong>{purpose || "fingerprint review"}</strong>.
+              <p className="letter__salutation">To whom it may concern,</p>
+              <p className="letter__statement">
+                This document certifies that <strong>{applicantName || "—"}</strong> has 
+                provided their thumb impression for <strong>{purpose || "official verification"}</strong>.
               </p>
-              <p>
-                The impression below was prepared through the ALLANTECH mobile capture
-                workflow and converted into a blue administrative print for inclusion in
-                this record.
+              <p className="letter__method">
+                The impression was captured using secure digital methods and is presented 
+                below as an authentic ink representation suitable for official records.
               </p>
 
-              <div className="letter__images">
-                <figure className="letter__figure letter__figure--ink">
-                  <span>Blue Ink Thumb Impression</span>
+              <div className="letter__impression-section">
+                <div className="impression-box">
+                  <div className="impression-label">Official Thumb Impression</div>
                   {inkImage ? (
-                    <NextImage
-                      alt="Blue ink thumb impression"
-                      height={640}
-                      src={inkImage}
-                      unoptimized
-                      width={480}
-                    />
+                    <div className="fingerprint-impression">
+                      <NextImage
+                        alt="Official thumb impression"
+                        height={640}
+                        src={inkImage}
+                        unoptimized
+                        width={480}
+                      />
+                    </div>
                   ) : (
-                    <div className="letter__placeholder">No thumb impression yet</div>
+                    <div className="impression-placeholder">
+                      <span>Impression pending capture</span>
+                    </div>
                   )}
-                </figure>
-                <figure className="letter__figure letter__figure--scan">
-                  <span>Reference Scan</span>
-                  {enhancedImage ? (
-                    <NextImage
-                      alt="Enhanced fingerprint preview"
-                      height={640}
-                      src={enhancedImage}
-                      unoptimized
-                      width={480}
-                    />
-                  ) : (
-                    <div className="letter__placeholder">No scan preview yet</div>
-                  )}
-                </figure>
+                </div>
               </div>
 
-              <div className="letter__facts">
-                <p>Applicant: {applicantName || "Pending name"}</p>
-                <p>Document reference: {documentRef || "Pending reference"}</p>
-                <p>Date recorded: {capturedAt || getTodayValue()}</p>
-              </div>
+              <div className="letter__footer">
+                <div className="letter__details">
+                  <div className="detail-row">
+                    <span className="detail-label">Applicant:</span>
+                    <span className="detail-value">{applicantName || "—"}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Reference Number:</span>
+                    <span className="detail-value">{documentRef || "—"}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Date of Capture:</span>
+                    <span className="detail-value">{capturedAt || getTodayValue()}</span>
+                  </div>
+                </div>
 
-              <div className="letter__signoff">
-                <p>Issued by: {issuedBy || "ALLANTECH Biometric Desk"}</p>
-                <p>Signature: ______________________________</p>
+                <div className="letter__authorization">
+                  <div className="auth-row">
+                    <span className="auth-label">Authorized by:</span>
+                    <span className="auth-value">{issuedBy || "ALLANTECH Biometric Desk"}</span>
+                  </div>
+                  <div className="signature-line">
+                    <span className="signature-label">Signature:</span>
+                    <div className="signature-space"></div>
+                  </div>
+                  <div className="stamp-area">
+                    <div className="official-stamp">
+                      <span>OFFICIAL</span>
+                      <small>ALLANTECH</small>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </article>
-
-          <div className="stack-inline">
-            <Button onClick={() => window.print()} type="button">
-              Print Letter
-            </Button>
-            <Link className="button button--secondary" href="/register">
-              Back To Capture
-            </Link>
-          </div>
         </section>
       </div>
     );
@@ -543,45 +497,29 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
     <div className="grid capture-layout">
       <section className="hero hero--compact">
         <p className="eyebrow">ALLANTECH Organization</p>
-        <h1>Thumb Intake Desk</h1>
+        <h1>Thumb Impression Capture</h1>
         <p>
-          Use a phone camera to record a clear thumb impression, prepare a blue-ink print
-          version, and place it into an official ALLANTECH letter without leaving this app.
+          Position your thumb within the camera guide and capture a clear impression 
+          for your official record. The system will prepare a professional document 
+          ready for printing.
         </p>
-        <div className="security-note">
-          <strong>Camera origin:</strong>{" "}
-          {originDetails ? originDetails.origin : "Detecting..."}
-          <br />
-          <strong>Secure context:</strong>{" "}
-          {originDetails ? (originDetails.isSecure ? "Yes" : "No") : "Detecting..."}
-          <br />
-          <strong>Permission state:</strong> {permissionState}
-          {!originDetails?.isSecure ? (
-            <>
-              <br />
-              <strong>Fix:</strong> open this app through HTTPS. A phone visiting a LAN IP on
-              plain <code>http://</code> will usually be blocked from camera access by the
-              browser.
-            </>
-          ) : null}
-        </div>
         <div className="hero__actions">
           <Button busy={busy} onClick={startCamera} type="button">
-            Allow Camera
+            Start Camera
           </Button>
           <Link className="button button--secondary" href="/dashboard">
-            View Letter
+            View Document
           </Link>
         </div>
       </section>
 
       <section className="card studio">
         <div className="card__header">
-          <p className="eyebrow">Operator Sheet</p>
-          <h2>Capture Record</h2>
+          <p className="eyebrow">Capture Details</p>
+          <h2>Record Information</h2>
           <p>
-            Keep the lens clean, use bright light, and fill the guide with the center of
-            the thumb. A close, steady frame gives the best ridge definition.
+            Complete the information below before capturing the thumb impression. 
+            All fields marked are required for your official document.
           </p>
         </div>
 
@@ -643,15 +581,15 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
           <div className="intake-strip">
             <div>
               <span>Step 1</span>
-              <strong>Allow camera access</strong>
+              <strong>Enable camera</strong>
             </div>
             <div>
               <span>Step 2</span>
-              <strong>Frame the thumb tightly</strong>
+              <strong>Position thumb in frame</strong>
             </div>
             <div>
               <span>Step 3</span>
-              <strong>Issue the letter</strong>
+              <strong>Generate document</strong>
             </div>
           </div>
 
@@ -660,14 +598,14 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
             <div className="camera-guide" />
             {!cameraReady ? (
               <div className="camera-frame__empty">
-                Camera preview will appear here after permission is granted.
+                Camera preview will appear here once camera access is enabled.
               </div>
             ) : null}
           </div>
 
           <div className="stack-inline">
             <Button disabled={!cameraReady} onClick={captureFingerprint} type="button">
-              Record Thumb
+              Capture Impression
             </Button>
             <Button onClick={stopCamera} type="button" variant="secondary">
               Stop Camera
@@ -677,17 +615,12 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
           <p className={`status ${error ? "status--error" : "status--success"}`}>
             {error || status}
           </p>
-          {!originDetails?.isSecure ? (
+          {error && error.includes("secure") ? (
             <div className="help-card">
               <p>
-                Use <code>npm run dev:https</code>, then open the phone on the HTTPS
-                address for this computer. If the browser shows a certificate warning,
-                trust the local development certificate first.
-              </p>
-              <p>
-                If you must stay on a network IP, HTTPS is the workable path.{" "}
-                <code>localhost</code> is treated specially by browsers, but{" "}
-                <code>http://192.168.x.x</code> is not.
+                For security, camera access requires a secure connection. Please ensure 
+                you are accessing this page via HTTPS or contact your administrator 
+                for assistance.
               </p>
             </div>
           ) : null}
@@ -696,17 +629,17 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
 
       <section className="card results">
         <div className="card__header">
-          <p className="eyebrow">Output Review</p>
-          <h2>Capture Panels</h2>
+          <p className="eyebrow">Preview</p>
+          <h2>Captured Impression</h2>
           <p>
-            Review the raw crop, the blue-ink print impression, and the reference scan.
-            The issued letter uses the blue-ink impression rather than the plain photograph.
+            Review your captured impression below. Once satisfied, proceed to generate 
+            your official document for printing.
           </p>
         </div>
 
         <div className="results__grid results__grid--triple">
           <figure className="result-card">
-            <span>Camera Crop</span>
+            <span>Original Capture</span>
             {originalImage ? (
               <NextImage
                 alt="Original thumb photograph"
@@ -716,42 +649,42 @@ export function FingerprintStudio({ mode = "capture" }: Props) {
                 width={480}
               />
             ) : (
-              <div className="result-placeholder">No capture yet</div>
+              <div className="result-placeholder">Capture an impression to see preview</div>
             )}
           </figure>
           <figure className="result-card result-card--ink">
-            <span>Blue Ink Print</span>
+            <span>Official Impression</span>
             {inkImage ? (
               <NextImage
-                alt="Blue ink print thumb"
+                alt="Official ink impression"
                 height={640}
                 src={inkImage}
                 unoptimized
                 width={480}
               />
             ) : (
-              <div className="result-placeholder">No blue-ink print yet</div>
+              <div className="result-placeholder">Official impression will appear here</div>
             )}
           </figure>
           <figure className="result-card">
-            <span>Reference Scan</span>
+            <span>Enhanced Detail</span>
             {enhancedImage ? (
               <NextImage
-                alt="Enhanced thumb scan"
+                alt="Enhanced detail view"
                 height={640}
                 src={enhancedImage}
                 unoptimized
                 width={480}
               />
             ) : (
-              <div className="result-placeholder">No enhanced scan yet</div>
+              <div className="result-placeholder">Enhanced detail will appear here</div>
             )}
           </figure>
         </div>
 
         <div className="stack-inline">
           <Link className="button button--primary" href="/dashboard">
-            Generate Letter
+            Generate Official Document
           </Link>
         </div>
       </section>

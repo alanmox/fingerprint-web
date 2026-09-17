@@ -5,26 +5,26 @@ export default function HomePage() {
     <div className="grid">
       <section className="hero hero--station">
         <div className="station-copy">
-          <p className="eyebrow">ALLANTECH Field Intake</p>
-          <h1>Record a thumb impression the way an operator actually works.</h1>
+          <p className="eyebrow">ALLANTECH Organization</p>
+          <h1>Official Thumb Impression Capture</h1>
           <p>
-            This workspace is built for practical intake: open it on a phone, capture the
-            thumb cleanly, prepare a blue-ink impression, and issue the letter from the same desk.
+            Securely capture your thumb impression and generate a professional document 
+            suitable for official records. All processing is done securely within your browser.
           </p>
           <div className="hero__actions">
             <Link className="button button--primary" href="/register">
-              Open Intake Desk
+              Start Capture
             </Link>
             <Link className="button button--secondary" href="/dashboard">
-              Review Letter
+              View Document
             </Link>
           </div>
         </div>
         <div className="station-panel">
-          <span>What this tool prepares</span>
-          <strong>Camera crop</strong>
-          <strong>Blue-ink impression</strong>
-          <strong>Issued ALLANTECH record</strong>
+          <span>Document Includes</span>
+          <strong>Secure capture</strong>
+          <strong>Professional impression</strong>
+          <strong>Print-ready record</strong>
         </div>
       </section>
     </div>

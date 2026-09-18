@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FingerprintIcon } from "@/components/icons";
+import { FingerprintIcon, RefreshIcon } from "@/components/icons";
 import { DeviceStatus, type DeviceState } from "@/components/DeviceStatus";
 import { StudentIdentity } from "@/components/StudentIdentity";
 import {
@@ -160,10 +160,29 @@ export function KioskScanner({ fieldSiteName }: { fieldSiteName?: string }) {
             <span>Field Site</span>
             <strong>{fieldSiteName ?? "Not configured"}</strong>
           </div>
-          <DeviceStatus
-            state={deviceState}
-            detail={deviceState === "error" ? deviceDetail : undefined}
-          />
+          <div className="scan-station__device-row">
+            <DeviceStatus
+              state={deviceState}
+              detail={deviceState === "error" ? deviceDetail : undefined}
+            />
+            <button
+              className="scan-station__refresh"
+              disabled={deviceState === "checking"}
+              onClick={checkDevice}
+              type="button"
+              aria-label="Check scanner connection"
+              title="Check scanner connection"
+            >
+              <RefreshIcon
+                size={18}
+                className={
+                  deviceState === "checking"
+                    ? "scan-station__refresh-icon scan-station__refresh-icon--spinning"
+                    : "scan-station__refresh-icon"
+                }
+              />
+            </button>
+          </div>
         </div>
 
         <div className="scan-station__stage">

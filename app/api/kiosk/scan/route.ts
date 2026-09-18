@@ -32,8 +32,11 @@ export async function POST(request: Request) {
 
   if (!fieldSite) {
     return NextResponse.json(
-      { error: "No field site is configured." },
-      { status: 500 },
+      {
+        outcome: "device_error",
+        message: "No field site is configured.",
+      },
+      { status: 503 },
     );
   }
 
@@ -87,6 +90,8 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           outcome: "ineligible",
+          studentName: student.fullName,
+          reasons: eligibility.reasons,
           message: `Registration incomplete for ${student.fullName}: ${eligibility.reasons.join("; ")}`,
         },
         { status: 403 },

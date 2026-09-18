@@ -1,15 +1,6 @@
 import { db } from "@/lib/db";
 import { RequirementItemsManager } from "@/components/admin/RequirementItemsManager";
-
-function formatTime(minutes: number) {
-  const hours = Math.floor(minutes / 60)
-    .toString()
-    .padStart(2, "0");
-  const mins = (minutes % 60).toString().padStart(2, "0");
-  return `${hours}:${mins}`;
-}
-
-const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+import { FieldSiteForm } from "@/components/admin/FieldSiteForm";
 
 export default async function SettingsPage() {
   const fieldSite = await db.fieldSite.findFirst();
@@ -30,26 +21,15 @@ export default async function SettingsPage() {
           <h2>{fieldSite?.name ?? "Not configured"}</h2>
         </div>
         {fieldSite ? (
-          <dl className="checklist">
-            <div className="checklist__item">
-              <label>Location</label>
-              <span>{fieldSite.location}</span>
-            </div>
-            <div className="checklist__item">
-              <label>Expected start time</label>
-              <span>{formatTime(fieldSite.expectedStartMinutes)}</span>
-            </div>
-            <div className="checklist__item">
-              <label>Late grace period</label>
-              <span>{fieldSite.lateGraceMinutes} minutes</span>
-            </div>
-            <div className="checklist__item">
-              <label>Expected days</label>
-              <span>
-                {expectedWeekdays.map((day) => WEEKDAY_LABELS[day]).join(", ")}
-              </span>
-            </div>
-          </dl>
+          <FieldSiteForm
+            initial={{
+              name: fieldSite.name,
+              location: fieldSite.location,
+              expectedStartMinutes: fieldSite.expectedStartMinutes,
+              lateGraceMinutes: fieldSite.lateGraceMinutes,
+              expectedWeekdays,
+            }}
+          />
         ) : (
           <p className="status status--error">
             No field site is configured. Run the database seed script.

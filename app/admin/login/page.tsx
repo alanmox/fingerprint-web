@@ -32,7 +32,7 @@ export default function AdminLoginPage() {
         throw new Error(payload.error ?? "Login failed.");
       }
 
-      router.push("/admin/students");
+      router.push("/admin/dashboard");
       router.refresh();
     } catch (caughtError) {
       setError(

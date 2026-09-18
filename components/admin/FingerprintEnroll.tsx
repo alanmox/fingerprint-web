@@ -2,14 +2,13 @@
 
 import { useState } from "react";
 import { Button } from "@/components/Button";
+import { DeviceStatus as DeviceStatusPanel, type DeviceState } from "@/components/DeviceStatus";
 
 type ExistingTemplate = {
   quality: number;
   capturedAtIso: string;
   deviceSerial: string | null;
 } | null;
-
-type DeviceStatus = "idle" | "checking" | "ready" | "error";
 
 export function FingerprintEnroll({
   studentId,
@@ -18,7 +17,7 @@ export function FingerprintEnroll({
   studentId: string;
   existingTemplate: ExistingTemplate;
 }) {
-  const [deviceStatus, setDeviceStatus] = useState<DeviceStatus>("idle");
+  const [deviceStatus, setDeviceStatus] = useState<DeviceState>("idle");
   const [template, setTemplate] = useState(existingTemplate);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
@@ -93,20 +92,7 @@ export function FingerprintEnroll({
   return (
     <div className="grid">
       <div className="device-panel">
-        <div className={`device-status device-status--${deviceStatus}`}>
-          <span className="device-status__dot" />
-          <div>
-            <strong>
-              {deviceStatus === "ready"
-                ? "Scanner connected"
-                : deviceStatus === "checking"
-                  ? "Checking scanner..."
-                  : deviceStatus === "error"
-                    ? "Scanner unavailable"
-                    : "Scanner not connected"}
-            </strong>
-          </div>
-        </div>
+        <DeviceStatusPanel state={deviceStatus} />
         <div className="stack-inline">
           <Button
             busy={busy && deviceStatus === "checking"}

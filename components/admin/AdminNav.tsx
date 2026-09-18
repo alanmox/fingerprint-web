@@ -5,8 +5,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/Button";
 
 const LINKS = [
+  { href: "/admin/dashboard", label: "Dashboard" },
   { href: "/admin/students", label: "Students" },
-  { href: "/admin/reports/today", label: "Reports" },
+  { href: "/admin/reports/daily", label: "Reports" },
   { href: "/admin/settings", label: "Settings" },
 ];
 
@@ -41,7 +42,7 @@ export function AdminNav({ email }: { email: string }) {
           </Link>
         ))}
         <Link className="admin-nav__link" href="/kiosk" target="_blank">
-          Open Kiosk ↗
+          Scan Station ↗
         </Link>
       </nav>
       <Button onClick={handleLogout} type="button" variant="secondary">

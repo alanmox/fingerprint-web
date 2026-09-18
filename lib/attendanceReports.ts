@@ -81,6 +81,56 @@ export async function getTotals(fieldSiteId: string, from: Date, to: Date) {
   }));
 }
 
+export async function getDashboardSummary(fieldSiteId: string) {
+  const today = startOfDay(new Date());
+  const fieldSite = await db.fieldSite.findUnique({ where: { id: fieldSiteId } });
+
+  const [activeStudentCount, { present, checkedOut }, recentAttempts, failedToday] =
+    await Promise.all([
+      db.student.count({ where: { fieldSiteId, isActive: true } }),
+      getTodayStatus(fieldSiteId),
+      db.identifyAttempt.findMany({
+        where: { fieldSiteId },
+        orderBy: { createdAt: "desc" },
+        take: 8,
+        include: { matchedStudent: { select: { fullName: true } } },
+      }),
+      db.identifyAttempt.count({
+        where: {
+          fieldSiteId,
+          createdAt: { gte: today },
+          outcome: { in: ["no_match", "ineligible", "device_error"] },
+        },
+      }),
+    ]);
+
+  const expectedWeekdays = Array.isArray(fieldSite?.expectedWeekdays)
+    ? (fieldSite.expectedWeekdays as number[])
+    : [];
+  const isExpectedDay = expectedWeekdays.includes(today.getDay());
+
+  const { lateArrivals, absences } = await getFlags(fieldSiteId, today);
+
+  return {
+    fieldSite,
+    isExpectedDay,
+    expectedToday: isExpectedDay ? activeStudentCount : 0,
+    present: present.length,
+    checkedOut: checkedOut.length,
+    late: lateArrivals.length,
+    absent: absences.length,
+    failedToday,
+    lastScanAt: recentAttempts[0]?.createdAt ?? null,
+    recentAttempts: recentAttempts.map((attempt) => ({
+      id: attempt.id,
+      outcome: attempt.outcome,
+      matchedStudentName: attempt.matchedStudent?.fullName ?? null,
+      matchScore: attempt.matchScore,
+      createdAt: attempt.createdAt,
+    })),
+  };
+}
+
 export async function getFlags(fieldSiteId: string, date: Date) {
   const day = startOfDay(date);
   const fieldSite = await db.fieldSite.findUnique({
